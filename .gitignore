@@ -6,9 +6,9 @@ frontend/dist
 
 # Python
 backend/.venv
+backend/embeddings.pkl
 __pycache__
 *.pyc
 
 # Cache
-backend
 !backend/cache/.gitkeep
