@@ -28,7 +28,7 @@ urls_path = "urls.pkl"
 if not os.path.exists(embeddings_path):
     print("Downloading embeddings...")
     gdown.download(
-        "https://drive.google.com/file/d/1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE/view",
+        "https://drive.google.com/uc?id=1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE",
         embeddings_path,
         quiet=False
     )
