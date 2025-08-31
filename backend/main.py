@@ -1,42 +1,44 @@
 import pickle
 import numpy as np
-from numpy.linalg import norm
 from fastapi import FastAPI, UploadFile, File, Form
-import requests
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-import os
-import gdown
 import io
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.layers import GlobalMaxPooling2D
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-from sklearn.neighbors import NearestNeighbors
+import faiss
+import os
+import requests
 
 # -------------------
-# Load model + data
+# Load model
 # -------------------
 base_model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
 base_model.trainable = False
 model = tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
 
+# -------------------
+# Load embeddings and URLs
+# -------------------
 embeddings_path = "embeddings.pkl"
 urls_path = "urls.pkl"
 
-# Load embeddings and filenames (float32)
 with open(embeddings_path, "rb") as f:
-    feature_list = np.array(pickle.load(f), dtype=np.float32)
-print("Embeddings loaded, length:", len(feature_list))
+    feature_list = np.array(pickle.load(f), dtype=np.float16)  # float16 for memory & speed
+print("Embeddings loaded:", feature_list.shape)
 
 with open(urls_path, "rb") as f:
     filenames = pickle.load(f)
 
-print("Embeddings loaded, length:", len(feature_list))
-
-# Nearest neighbors model
-neighbors = NearestNeighbors(n_neighbors=5, algorithm="brute", metric="euclidean")
-neighbors.fit(feature_list)
+# -------------------
+# Build FAISS index
+# -------------------
+d = feature_list.shape[1]  # feature dimension
+index = faiss.IndexFlatL2(d)  # L2 distance
+index.add(feature_list)       # add all embeddings
+print("FAISS index built, total vectors:", index.ntotal)
 
 # -------------------
 # FastAPI app
@@ -51,6 +53,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------
+# Feature extraction
+# -------------------
 def extract_features(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     img = img.resize((224, 224))
@@ -58,8 +63,12 @@ def extract_features(img_bytes):
     expanded = np.expand_dims(img_array, axis=0)
     preprocessed = preprocess_input(expanded)
     result = model.predict(preprocessed, verbose=0).flatten()
-    return result / norm(result)
+    result = result / np.linalg.norm(result)
+    return result.astype(np.float16)  # convert to float16
 
+# -------------------
+# Search endpoint
+# -------------------
 @app.post("/search")
 async def search(
     file: UploadFile = File(None),
@@ -76,7 +85,7 @@ async def search(
         return {"results": []}
 
     query_vector = extract_features(contents).reshape(1, -1)
-    distances, indices = neighbors.kneighbors(query_vector, n_neighbors=k)
+    distances, indices = index.search(query_vector, k)
 
     results = []
     for rank, (idx, dist) in enumerate(zip(indices[0], distances[0])):
@@ -84,13 +93,15 @@ async def search(
             "id": rank,
             "image_url": filenames[idx],
             "name": f"Product {rank+1}",
-            "score": float(1 - dist)
+            "score": float(1 - dist)  # optional similarity score
         })
+
     return {"results": results}
 
 # -------------------
-# Run app on Render
+# Run on Render
 # -------------------
 if __name__ == "__main__":
+    import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
