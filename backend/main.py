@@ -5,6 +5,9 @@ from fastapi import FastAPI, UploadFile, File, Form
 import requests
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
+import os
+import pickle
+import gdown
 import io
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
@@ -19,7 +22,17 @@ base_model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 2
 base_model.trainable = False
 model = tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
 
-feature_list = pickle.load(open("embeddings.pkl", "rb"))
+output_path = "embeddings.pkl"
+
+# Download if not exists
+if not os.path.exists(output_path):
+    print("Downloading embeddings from Google Drive...")
+    url = f"https://drive.google.com/file/d/1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE/view?usp=sharing"
+    gdown.download(url, output_path, quiet=False)
+
+# Load embeddings
+feature_list = pickle.load(open(output_path, "rb"))
+print("Embeddings loaded, length:", len(feature_list))
 filenames = pickle.load(open("urls.pkl", "rb"))   # list of image URLs
 
 neighbors = NearestNeighbors(n_neighbors=8, algorithm="brute", metric="euclidean")
