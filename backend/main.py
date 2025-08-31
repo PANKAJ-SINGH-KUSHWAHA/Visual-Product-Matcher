@@ -6,49 +6,48 @@ import requests
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import os
-import gdown
 import io
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.layers import GlobalMaxPooling2D
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from sklearn.neighbors import NearestNeighbors
+import uvicorn
 
 # -------------------
-# Load model + data
+# Load model
 # -------------------
 base_model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
 base_model.trainable = False
 model = tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
 
+# -------------------
+# Paths
+# -------------------
 embeddings_path = "embeddings.pkl"
 urls_path = "urls.pkl"
 
-# Download embeddings if missing (use direct link)
+# -------------------
+# Load embeddings with float16 to reduce memory usage
+# -------------------
 if not os.path.exists(embeddings_path):
-    print("Downloading embeddings...")
-    gdown.download(
-        "https://drive.google.com/uc?id=1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE",
-        embeddings_path,
-        quiet=False
-    )
+    raise FileNotFoundError(f"{embeddings_path} not found! Upload it to your repo or Render storage.")
 
-
-
-# Load embeddings and filenames
 with open(embeddings_path, "rb") as f:
-    feature_list = pickle.load(f)
+    feature_list = np.array(pickle.load(f), dtype=np.float16)
 print("Embeddings loaded, length:", len(feature_list))
 
 with open(urls_path, "rb") as f:
     filenames = pickle.load(f)
 
-# Nearest neighbors model
+# -------------------
+# Nearest neighbors
+# -------------------
 neighbors = NearestNeighbors(n_neighbors=5, algorithm="brute", metric="euclidean")
 neighbors.fit(feature_list)
 
 # -------------------
-# FastAPI app
+# FastAPI setup
 # -------------------
 app = FastAPI()
 
@@ -60,6 +59,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------
+# Feature extraction
+# -------------------
 def extract_features(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     img = img.resize((224, 224))
@@ -69,6 +71,9 @@ def extract_features(img_bytes):
     result = model.predict(preprocessed, verbose=0).flatten()
     return result / norm(result)
 
+# -------------------
+# Search endpoint
+# -------------------
 @app.post("/search")
 async def search(
     file: UploadFile = File(None),
@@ -84,7 +89,7 @@ async def search(
     else:
         return {"results": []}
 
-    query_vector = extract_features(contents).reshape(1, -1)
+    query_vector = extract_features(contents).reshape(1, -1).astype(np.float16)
     distances, indices = neighbors.kneighbors(query_vector, n_neighbors=k)
 
     results = []
@@ -98,7 +103,7 @@ async def search(
     return {"results": results}
 
 # -------------------
-# Run app on Render
+# Run app
 # -------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
