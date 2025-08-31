@@ -1,4 +1,4 @@
-# Visual Product Matcher (Full Stack)
+# Visual Product Matcher
 
 A minimal, production-quality **Visual Product Matcher** built with:
 - **Frontend**: React (Vite) + Tailwind
@@ -38,7 +38,7 @@ npm run dev
 
 ---
 
-## 200-word approach
+## Approach to built the Visual-Product-Matcher
 1. We built a lightweight visual search engine. The backend uses a pre-trained ResNet50 to convert images into 2048‑dim embeddings and normalizes them so cosine similarity reflects visual closeness.
 
 2. Product data comes from a simple CSV with image URLs; on first run, the API downloads each image, computes embeddings, and builds a FAISS inner‑product index for fast k‑NN retrieval.
