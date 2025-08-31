@@ -4,7 +4,7 @@
 ```bash
 cd frontend
 npm install
-echo "VITE_API_URL=http://localhost:8000" > .env.local
+echo "VITE_API_URL=http://localhost:5000" > .env.local
 npm run dev
 ```
 Then open the printed localhost URL.
