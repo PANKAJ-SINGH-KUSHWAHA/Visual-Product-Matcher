@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+from numpy.linalg import norm
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
@@ -8,7 +9,7 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.layers import GlobalMaxPooling2D
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
-import faiss
+from sklearn.neighbors import NearestNeighbors
 import os
 import requests
 
@@ -26,19 +27,17 @@ embeddings_path = "embeddings.pkl"
 urls_path = "urls.pkl"
 
 with open(embeddings_path, "rb") as f:
-    feature_list = np.array(pickle.load(f), dtype=np.float16)  # float16 for memory & speed
-print("Embeddings loaded:", feature_list.shape)
+    feature_list = np.array(pickle.load(f), dtype=np.float16)  # use float16
+print("Embeddings loaded, length:", len(feature_list))
 
 with open(urls_path, "rb") as f:
     filenames = pickle.load(f)
 
 # -------------------
-# Build FAISS index
+# Nearest neighbors
 # -------------------
-d = feature_list.shape[1]  # feature dimension
-index = faiss.IndexFlatL2(d)  # L2 distance
-index.add(feature_list)       # add all embeddings
-print("FAISS index built, total vectors:", index.ntotal)
+neighbors = NearestNeighbors(n_neighbors=5, algorithm="brute", metric="euclidean")
+neighbors.fit(feature_list)
 
 # -------------------
 # FastAPI app
@@ -63,8 +62,7 @@ def extract_features(img_bytes):
     expanded = np.expand_dims(img_array, axis=0)
     preprocessed = preprocess_input(expanded)
     result = model.predict(preprocessed, verbose=0).flatten()
-    result = result / np.linalg.norm(result)
-    return result.astype(np.float16)  # convert to float16
+    return (result / norm(result)).astype(np.float16)  # convert to float16
 
 # -------------------
 # Search endpoint
@@ -85,7 +83,7 @@ async def search(
         return {"results": []}
 
     query_vector = extract_features(contents).reshape(1, -1)
-    distances, indices = index.search(query_vector, k)
+    distances, indices = neighbors.kneighbors(query_vector, n_neighbors=k)
 
     results = []
     for rank, (idx, dist) in enumerate(zip(indices[0], distances[0])):
@@ -93,7 +91,7 @@ async def search(
             "id": rank,
             "image_url": filenames[idx],
             "name": f"Product {rank+1}",
-            "score": float(1 - dist)  # optional similarity score
+            "score": float(1 - dist)
         })
 
     return {"results": results}
