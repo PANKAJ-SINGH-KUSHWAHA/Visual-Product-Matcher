@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://visual-product-matcher-ihoa.onrender.com';
+const API_URL = 'https://visual-product-matcher-ihoa.onrender.com';
 
 export default function App() {
   const [file, setFile] = useState(null)
