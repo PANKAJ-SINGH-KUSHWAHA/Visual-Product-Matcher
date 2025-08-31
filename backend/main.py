@@ -24,24 +24,15 @@ model = tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
 embeddings_path = "embeddings.pkl"
 urls_path = "urls.pkl"
 
-# Download embeddings if missing (use direct link)
-if not os.path.exists(embeddings_path):
-    print("Downloading embeddings...")
-    gdown.download(
-        "https://drive.google.com/uc?id=1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE",
-        embeddings_path,
-        quiet=False
-    )
-
-
-
-# Load embeddings and filenames
+# Load embeddings and filenames (float32)
 with open(embeddings_path, "rb") as f:
-    feature_list = np.array(pickle.load(f), dtype=np.float16)
+    feature_list = np.array(pickle.load(f), dtype=np.float32)
 print("Embeddings loaded, length:", len(feature_list))
 
 with open(urls_path, "rb") as f:
     filenames = pickle.load(f)
+
+print("Embeddings loaded, length:", len(feature_list))
 
 # Nearest neighbors model
 neighbors = NearestNeighbors(n_neighbors=5, algorithm="brute", metric="euclidean")
