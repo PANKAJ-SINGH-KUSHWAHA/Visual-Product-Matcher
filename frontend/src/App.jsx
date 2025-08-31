@@ -35,6 +35,7 @@ export default function App() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setResults(data.results || [])
+      console.log(setResults);
     } catch (err) {
       if (err.response?.status === 404) {
         setError('No similar product found.')
@@ -118,27 +119,64 @@ export default function App() {
           </div>
 
           {/* Results */}
-          <div className="p-5 bg-white rounded-2xl shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Similar Products</h2>
-              <span className="text-xs text-gray-500">{results.length} results</span>
+<div className="p-5 bg-white rounded-2xl shadow-md">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-xl font-bold">Similar Products</h2>
+    <span className="text-xs text-gray-500">{results.length} results</span>
+  </div>
+
+  {loading ? (
+    
+    <div className="text-center py-8 text-gray-500">
+      <svg
+        className="animate-spin h-6 w-6 mx-auto text-pink-500"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+        ></circle>
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+        ></path>
+      </svg>
+      <p className="mt-2">Searching for similar products…</p>
+    </div>
+  ) : results.length === 0 ? (
+    <div className="text-sm text-gray-500 text-center py-8">
+      No results yet. Try searching!
+    </div>
+  ) : (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+      {results.map((r) => (
+        <div
+          key={r.id}
+          className="border rounded-2xl overflow-hidden bg-white hover:shadow-lg transition"
+        >
+          <img
+            src={r.image_url}
+            alt={r.name}
+            className="w-full h-48 object-cover transform hover:scale-105 transition"
+          />
+          <div className="p-3">
+            <div className="text-sm font-medium">{r.name}</div>
+            <div className="text-xs text-gray-500">
+              Score: {r.score.toFixed(3)}
             </div>
-            {results.length === 0 ? (
-              <div className="text-sm text-gray-500 text-center py-8">No results yet. Try searching!</div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                {results.map((r) => (
-                  <div key={r.id} className="border rounded-2xl overflow-hidden bg-white hover:shadow-lg transition">
-                    <img src={r.image_url} alt={r.name} className="w-full h-48 object-cover transform hover:scale-105 transition" />
-                    <div className="p-3">
-                      <div className="text-sm font-medium">{"Similar Product"}</div>
-                      <div className="text-xs text-gray-500">Score: {r.score.toFixed(3)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
         </div>
       </main>
     </div>
