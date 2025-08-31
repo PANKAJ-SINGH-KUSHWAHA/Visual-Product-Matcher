@@ -6,7 +6,6 @@ import requests
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import os
-import pickle
 import gdown
 import io
 import tensorflow as tf
@@ -22,20 +21,30 @@ base_model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 2
 base_model.trainable = False
 model = tf.keras.Sequential([base_model, GlobalMaxPooling2D()])
 
-output_path = "embeddings.pkl"
+embeddings_path = "embeddings.pkl"
+urls_path = "urls.pkl"
 
-# Download if not exists
-if not os.path.exists(output_path):
-    print("Downloading embeddings from Google Drive...")
-    url = f"https://drive.google.com/file/d/1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE/view?usp=sharing"
-    gdown.download(url, output_path, quiet=False)
+# Download embeddings if missing (use direct link)
+if not os.path.exists(embeddings_path):
+    print("Downloading embeddings...")
+    gdown.download(
+        "https://drive.google.com/file/d/1UH3xFHgOIPmz70pb0QB1T7iWwddgwoLE/view",
+        embeddings_path,
+        quiet=False
+    )
 
-# Load embeddings
-feature_list = pickle.load(open(output_path, "rb"))
+
+
+# Load embeddings and filenames
+with open(embeddings_path, "rb") as f:
+    feature_list = pickle.load(f)
 print("Embeddings loaded, length:", len(feature_list))
-filenames = pickle.load(open("urls.pkl", "rb"))   # list of image URLs
 
-neighbors = NearestNeighbors(n_neighbors=8, algorithm="brute", metric="euclidean")
+with open(urls_path, "rb") as f:
+    filenames = pickle.load(f)
+
+# Nearest neighbors model
+neighbors = NearestNeighbors(n_neighbors=5, algorithm="brute", metric="euclidean")
 neighbors.fit(feature_list)
 
 # -------------------
