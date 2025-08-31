@@ -9,7 +9,7 @@ faiss-cpu==1.8.0.post1
 python-multipart==0.0.9
 tqdm==4.66.1
 tensorflow==2.15.0
-pandas
-skilit-learn==1.3.2
+pandas==2.1.1
+scikit-learn==1.3.2
 numpy==1.26.4
-opencv-python
+opencv-python==4.9.0.74
