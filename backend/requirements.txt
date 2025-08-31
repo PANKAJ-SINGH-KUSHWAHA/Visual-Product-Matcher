@@ -3,8 +3,8 @@ uvicorn[standard]==0.30.6
 pydantic==2.8.2
 requests==2.32.3
 pillow==10.4.0
-torch==2.8.0
-torchvision==0.22.1
+torch
+torchvision
 faiss-cpu==1.9.0.post1
 python-multipart==0.0.9
 tqdm==4.66.1
